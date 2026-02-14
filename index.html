@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para Mi Niña Hermosa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Montserrat:wght@300;400&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #ff0054;
+            --bg: #0a0a0a;
+            --paper: #fdfbf7;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            height: 100vh;
+            background: radial-gradient(circle at center, #2b0c14 0%, var(--bg) 100%);
+            font-family: 'Montserrat', sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        #start-btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background: transparent;
+            color: white;
+            border: 2px solid var(--primary);
+            border-radius: 30px;
+            cursor: pointer;
+            transition: 0.3s;
+            z-index: 50;
+            box-shadow: 0 0 15px rgba(255, 0, 84, 0.4);
+        }
+        #start-btn:hover { background: var(--primary); }
+
+        #gallery-container {
+            position: absolute;
+            width: 100%; height: 100%;
+            display: none; 
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+
+        .polaroid {
+            position: absolute;
+            width: 300px; /* Un poco más ancha para acomodar las 3 fotos */
+            background: white;
+            padding: 12px 12px 20px 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            border-radius: 5px;
+            transform-origin: center;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(50px) scale(0.9);
+        }
+
+        .polaroid.active {
+            opacity: 1;
+            transform: translateY(0) scale(1) rotate(-2deg);
+            z-index: 10;
+        }
+
+        .polaroid.swipe-out {
+            transform: translateX(-150%) rotate(-20deg) !important;
+            opacity: 0 !important;
+        }
+
+        /* DISEÑO DEL COLLAGE (GRID) */
+        .collage {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 180px 140px; /* Foto principal grande, dos abajo más chicas */
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .img-main { grid-column: 1 / -1; } /* Ocupa todo el ancho arriba */
+        
+    .collage img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;  /* ← Cambiamos 'contain' por 'cover' */
+            object-position: center; /* ← Asegura que las caras queden centradas al recortar */
+            background: #f5f5f5;
+            border-radius: 5px; /* Le subí un poquito el borde para que se vea más suave */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Sombra ligera para darle profundidad a cada foto */
+        }
+        .caption {
+            font-family: 'Caveat', cursive;
+            color: #333;
+            font-size: 1.5rem;
+            text-align: center;
+            margin-top: 10px;
+            line-height: 1.1;
+        }
+
+        .hint-text {
+            position: absolute;
+            bottom: 30px;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.5);
+            animation: blink 2s infinite;
+        }
+
+        /* LA CARTA FINAL */
+        #letter-container {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: 90%; max-width: 450px;
+            background: var(--paper); padding: 30px;
+            border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            z-index: 100; opacity: 0; pointer-events: none; transition: 1s; color: #222;
+        }
+        #letter-container.show { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+        
+        .letter-text { font-size: 1rem; line-height: 1.7; min-height: 150px; text-align: left; }
+        
+        .btn-love {
+            margin-top: 20px; width: 100%; padding: 12px;
+            background: var(--primary); color: white; border: none;
+            border-radius: 5px; font-weight: bold; cursor: pointer;
+            opacity: 0; transition: 0.5s;
+        }
+
+        /* FINAL TE AMO */
+        #final-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 200; opacity: 0; pointer-events: none; transition: 1s;
+        }
+        .final-text {
+            font-family: 'Caveat', cursive; font-size: 6rem;
+            color: var(--primary); text-shadow: 0 0 30px rgba(255, 0, 84, 0.6);
+            transform: scale(0.5); transition: 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <audio id="bg-music" loop>
+        <source src="CUCO-Lover is a day (Sub. Español) [Lyrics] [ZCzPoj1TZDc].mp3" type="audio/mp3">
+    </audio>
+
+    <button id="start-btn" onclick="startExperience()">Tengo algo para ti...</button>
+
+    <div id="gallery-container">
+        <div class="hint-text">TOCA EL COLLAGE PARA CONTINUAR</div>
+    </div>
+
+    <div id="letter-container">
+        <h2 style="font-family: 'Caveat'; color: var(--primary); font-size: 2.5rem; margin-bottom: 10px;">Para mi amorcito,</h2>
+        <div class="letter-text" id="typewriter"></div>
+        <button class="btn-love" id="finish-btn" onclick="showFinal()">Terminar de leer ❤</button>
+    </div>
+
+    <div id="final-screen">
+        <div class="final-text" id="te-amo">¡Te Amo!</div>
+    </div>
+
+    <script>
+        /* =========================================
+            📸 TUS 9 FOTOS (3 por cada slide) 📸
+           ========================================= */
+        const story = [
+            {
+                // SLIDE 1
+                imgs: [
+                    "si.jpg" , // Foto Grande Arriba
+                    "primera date.jpg" ,  // Foto Abajo Izquierda
+                    "una de las primeras como novios.jpg" ,   // Foto Abajo Derecha
+                ],
+                text: "Esta fue unas de nuestras primeras salidas ..."
+            },
+            {
+                // SLIDE 2
+                imgs: [
+                    "rain.jpg",
+                    "mi vida.jpg",
+                    "fundi.jpg"
+                ],
+                text: "En estos momentos me enamoré más de ti..."
+            },
+            {
+                // SLIDE 3
+                imgs: [
+                    "mi amorcito.jpg",
+                    "ultima foto q tengo.jpg",
+                    "chisqueados.jpg"
+                ],
+                text: "Y desde entonces, cada momento es mágico."
+            }
+        ];
+
+        /* =========================================
+            📝 LA CARTA FINAL 📝
+           ========================================= */
+        const letterContent = `Al principio no sabía bien por qué me gustabas tanto... 
+
+Pero con el tiempo me fui dando cuenta de que es tu forma de sonreír, la manera en la que me miras y la paz que me das cuando estoy contigo.
+
+Gracias por cruzarte en mi camino y por aguantarme. Eres lo mejor que me ha pasado en mucho tiempo y prometo cuidarte siempre.
+
+Feliz San Valentín, hermosa.`;
+
+        let currentIndex = 0;
+        const gallery = document.getElementById('gallery-container');
+
+        function startExperience() {
+            document.getElementById('start-btn').style.display = 'none';
+            gallery.style.display = 'flex';
+            document.getElementById('bg-music').play().catch(e => console.log(e));
+
+            story.forEach((item, index) => {
+                const polaroid = document.createElement('div');
+                polaroid.className = `polaroid ${index === 0 ? 'active' : ''}`;
+                const rotation = index === 0 ? -2 : (Math.random() * 10 - 5);
+                polaroid.style.transform = index === 0 ? `rotate(${rotation}deg)` : `translateY(50px) scale(0.9) rotate(${rotation}deg)`;
+                
+                // INYECTAMOS EL COLLAGE
+                polaroid.innerHTML = `
+                    <div class="collage">
+                        <img class="img-main" src="${item.imgs[0]}" alt="Momento 1">
+                        <img src="${item.imgs[1]}" alt="Momento 2">
+                        <img src="${item.imgs[2]}" alt="Momento 3">
+                    </div>
+                    <div class="caption">${item.text}</div>
+                `;
+                
+                polaroid.onclick = () => nextPhoto(polaroid);
+                gallery.appendChild(polaroid);
+            });
+        }
+
+        function nextPhoto(currentElement) {
+            currentElement.classList.add('swipe-out');
+            currentIndex++;
+            
+            setTimeout(() => {
+                currentElement.style.display = 'none'; 
+                if (currentIndex < story.length) {
+                    const nextElement = gallery.querySelectorAll('.polaroid')[currentIndex];
+                    nextElement.classList.add('active');
+                } else {
+                    document.querySelector('.hint-text').style.display = 'none';
+                    showLetter();
+                }
+            }, 600);
+        }
+
+        let charIndex = 0;
+        const speed = 50; 
+
+        function showLetter() {
+            const letterBox = document.getElementById('letter-container');
+            letterBox.classList.add('show');
+            setTimeout(typeWriter, 800);
+        }
+
+        function typeWriter() {
+            const twElement = document.getElementById('typewriter');
+            if (charIndex < letterContent.length) {
+                if(letterContent.charAt(charIndex) === '\n') {
+                    twElement.innerHTML += '<br><br>'; 
+                } else {
+                    twElement.innerHTML += letterContent.charAt(charIndex);
+                }
+                charIndex++;
+                setTimeout(typeWriter, speed);
+            } else {
+                document.getElementById('finish-btn').style.opacity = '1';
+            }
+        }
+
+        function showFinal() {
+            document.getElementById('letter-container').classList.remove('show');
+            const finalScreen = document.getElementById('final-screen');
+            
+            setTimeout(() => {
+                finalScreen.style.opacity = '1';
+                document.getElementById('te-amo').style.transform = 'scale(1)';
+                fireConfetti();
+            }, 500);
+        }
+
+        function fireConfetti() {
+            var duration = 4000;
+            var end = Date.now() + duration;
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff0054', '#ffffff'] });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff0054', '#ffffff'] });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+    </script>
+</body>
+</html>
